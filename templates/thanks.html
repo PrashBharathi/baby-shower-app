@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Thank You!{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card p-5 text-center">
+      <div class="display-6 mb-3">🎉 Thank you!</div>
+      <p class="lead text-muted">Your guess has been recorded.</p>
+      <a href="{{ url_for('index') }}" class="btn btn-accent mt-3">
+        Submit Another Guess
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

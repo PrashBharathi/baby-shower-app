@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Results{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">🍼 Guests' Guesses</h1>
+<div class="card p-3">
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          {% for h in headers %}
+          <th scope="col">{{ h.replace('_',' ').title() }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          {% for h in headers %}
+          <td>{{ r.get(h, '') }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not rows %}
+    <p class="text-muted mb-0">No submissions yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
