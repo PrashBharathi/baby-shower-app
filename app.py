@@ -15,6 +15,13 @@ from typing import List, Dict, Tuple
 from flask import Flask, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, DateField, TimeField, DecimalField
+from wtforms.validators import DataRequired, Length, Optional, NumberRange
+
+from dotenv import load_dotenv
+load_dotenv()
+
 # -----------------------------------------------------------------------------
 # Configuration
 # -----------------------------------------------------------------------------
@@ -83,6 +90,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     # --- Configuration (these lines go here) ---
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-change-me")
     app.config["SQLALCHEMY_DATABASE_URI"] = DB_PATH
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -100,44 +108,38 @@ def create_app() -> Flask:
         due_time = db.Column(db.String(5))
         weight_kg = db.Column(db.String(10))
 
+    class GuessForm(FlaskForm):
+        guest_name = StringField("Your Name", validators=[DataRequired(), Length(max=80)])
+        baby_name  = StringField("Baby Name", validators=[Optional(), Length(max=120)])
+        gender     = SelectField("Gender", choices=[("", "Not sure"), ("Boy", "Boy"), ("Girl", "Girl")])
+        due_date   = DateField("Due Date", validators=[Optional()])
+        due_time   = TimeField("Due Time", validators=[Optional()])
+        weight     = DecimalField("Birth Weight (kg)", places=2,
+                                validators=[Optional(), NumberRange(min=0, max=10)])
+
+
     # --- Create the database file if it doesn’t exist ---
     with app.app_context():
         db.create_all()
 
-    # --- Define routes below ---
-    @app.route("/", methods=["GET"])
+    @app.route("/", methods=["GET", "POST"])
     def index():
-        """Render the main form page."""
-        return render_template("index.html")
+        form = GuessForm()
+        if form.validate_on_submit():
+            new_guess = Guess(
+                timestamp=datetime.utcnow().isoformat(),
+                guest_name=form.guest_name.data.strip(),
+                baby_name=(form.baby_name.data or "").strip(),
+                gender=form.gender.data or "",
+                due_date=form.due_date.data.isoformat() if form.due_date.data else "",
+                due_time=form.due_time.data.strftime("%H:%M") if form.due_time.data else "",
+                weight_kg=str(form.weight.data) if form.weight.data is not None else "",
+            )
+            db.session.add(new_guess)
+            db.session.commit()
+            return redirect(url_for("thanks"))
+        return render_template("index.html", form=form)
 
-    @app.route("/submit", methods=["POST"])
-    def submit():
-        """Handle form submission and persist to CSV, then show a thank-you page."""
-        guest_name = (request.form.get("guest_name") or "").strip()
-        baby_name  = (request.form.get("baby_name") or "").strip()
-        gender     = (request.form.get("gender") or "").strip()
-        due_date   = (request.form.get("due_date") or "").strip()   # YYYY-MM-DD
-        due_time   = (request.form.get("due_time") or "").strip()   # HH:MM
-        weight_kg  = (request.form.get("weight") or "").strip()
-
-        # Minimal required field validation
-        if not guest_name:
-            # No flash here to keep deps minimal; just bounce back.
-            return redirect(url_for("index"))
-
-        new_guess = Guess(
-            timestamp=datetime.utcnow().isoformat(),
-            guest_name=guest_name,
-            baby_name=baby_name,
-            gender=gender,
-            due_date=due_date,
-            due_time=due_time,
-            weight_kg=weight_kg,
-        )
-        db.session.add(new_guess)
-        db.session.commit()
-
-        return redirect(url_for("thanks"))
 
     @app.route("/thanks", methods=["GET"])
     def thanks():

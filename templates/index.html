@@ -10,42 +10,71 @@
       </div>
       <p class="text-muted mb-4">Share your best guesses. We’ll reveal everything after the celebration!</p>
 
-      <form action="{{ url_for('submit') }}" method="POST" novalidate>
-        <div class="mb-3">
-          <label class="form-label">Your Name *</label>
-          <input type="text" name="guest_name" class="form-control" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Baby Name Suggestion (optional)</label>
-          <input type="text" name="baby_name" class="form-control">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Gender Guess</label>
-          <select name="gender" class="form-select">
-            <option value="" selected>Not sure</option>
-            <option>Boy</option>
-            <option>Girl</option>
-          </select>
-        </div>
-        <div class="row g-3">
-          <div class="col-12 col-sm-6">
-            <label class="form-label">Due Date Guess</label>
-            <input type="date" name="due_date" class="form-control">
-          </div>
-          <div class="col-12 col-sm-6">
-            <label class="form-label">Time Guess</label>
-            <input type="time" name="due_time" class="form-control">
-          </div>
-        </div>
-        <div class="mt-3">
-          <label class="form-label">Birth Weight (kg)</label>
-          <input type="number" name="weight" step="0.01" min="0" class="form-control" placeholder="e.g. 3.20">
-        </div>
+      <form action="" method="POST" novalidate>
+  {{ form.hidden_tag() }}
 
-        <button class="btn btn-accent w-100 mt-4" type="submit">
-          <i class="bi bi-send me-1"></i> Submit Guess
-        </button>
-      </form>
+  <div class="mb-3">
+    <label class="form-label">Your Name *</label>
+    <input type="text" name="guest_name" class="form-control"
+           value="{{ form.guest_name.data or '' }}" required>
+    {% for e in form.guest_name.errors %}
+      <div class="text-danger small">{{ e }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Baby Name (optional)</label>
+    <input type="text" name="baby_name" class="form-control"
+           value="{{ form.baby_name.data or '' }}">
+    {% for e in form.baby_name.errors %}
+      <div class="text-danger small">{{ e }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Gender Guess</label>
+    <select name="gender" class="form-select">
+      <option value="" {{ (form.gender.data or '') == '' and 'selected' or '' }}>Not sure</option>
+      <option value="Boy"  {{ form.gender.data == 'Boy'  and 'selected' or '' }}>Boy</option>
+      <option value="Girl" {{ form.gender.data == 'Girl' and 'selected' or '' }}>Girl</option>
+    </select>
+    {% for e in form.gender.errors %}
+      <div class="text-danger small">{{ e }}</div>
+    {% endfor %}
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-sm-6">
+      <label class="form-label">Due Date</label>
+      <input type="date" name="due_date" class="form-control"
+             value="{{ form.due_date.data if form.due_date.data else '' }}">
+      {% for e in form.due_date.errors %}
+        <div class="text-danger small">{{ e }}</div>
+      {% endfor %}
+    </div>
+    <div class="col-12 col-sm-6">
+      <label class="form-label">Time</label>
+      <input type="time" name="due_time" class="form-control"
+             value="{{ form.due_time.data and form.due_time.data.strftime('%H:%M') or '' }}">
+      {% for e in form.due_time.errors %}
+        <div class="text-danger small">{{ e }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <label class="form-label">Birth Weight (kg)</label>
+    <input type="number" name="weight" step="0.01" min="0" class="form-control"
+           value="{{ form.weight.data if form.weight.data is not none else '' }}"
+           placeholder="e.g. 3.20">
+    {% for e in form.weight.errors %}
+      <div class="text-danger small">{{ e }}</div>
+    {% endfor %}
+  </div>
+
+  <button class="btn btn-accent w-100 mt-4" type="submit">Submit Guess</button>
+</form>
+
     </div>
   </div>
 </div>
