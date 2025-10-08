@@ -13,3 +13,6 @@ venv/
 
 # Data files
 data/
+
+# Instance files
+instance/
