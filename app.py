@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 
 from flask import Flask, redirect, render_template, request, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -26,6 +27,9 @@ CSV_HEADERS = [
 ]
 SHOW_RESULTS = os.getenv("SHOW_RESULTS", "false").lower() == "true"
 RESULTS_PASSWORD = os.getenv("RESULTS_PASSWORD", "")
+
+DB_PATH = "sqlite:///app.db"
+db = SQLAlchemy()  # create globally, but init later inside the app factory
 
 
 
@@ -78,9 +82,29 @@ def create_app() -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
 
-    # Make sure data directory and CSV exist
-    ensure_csv_exists()
+    # --- Configuration (these lines go here) ---
+    app.config["SQLALCHEMY_DATABASE_URI"] = DB_PATH
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    # --- Initialize extensions ---
+    db.init_app(app)
+
+    # --- Define your model here ---
+    class Guess(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        timestamp = db.Column(db.String(32), nullable=False)
+        guest_name = db.Column(db.String(80), nullable=False)
+        baby_name = db.Column(db.String(120))
+        gender = db.Column(db.String(16))
+        due_date = db.Column(db.String(10))
+        due_time = db.Column(db.String(5))
+        weight_kg = db.Column(db.String(10))
+
+    # --- Create the database file if it doesn’t exist ---
+    with app.app_context():
+        db.create_all()
+
+    # --- Define routes below ---
     @app.route("/", methods=["GET"])
     def index():
         """Render the main form page."""
@@ -101,7 +125,18 @@ def create_app() -> Flask:
             # No flash here to keep deps minimal; just bounce back.
             return redirect(url_for("index"))
 
-        append_guess(guest_name, baby_name, gender, due_date, due_time, weight_kg)
+        new_guess = Guess(
+            timestamp=datetime.utcnow().isoformat(),
+            guest_name=guest_name,
+            baby_name=baby_name,
+            gender=gender,
+            due_date=due_date,
+            due_time=due_time,
+            weight_kg=weight_kg,
+        )
+        db.session.add(new_guess)
+        db.session.commit()
+
         return redirect(url_for("thanks"))
 
     @app.route("/thanks", methods=["GET"])
@@ -112,22 +147,9 @@ def create_app() -> Flask:
     @app.route("/results", methods=["GET", "POST"])
     def results():
         """Results page using a template for table rendering."""
-        if not SHOW_RESULTS:
-            # Optional password protection
-            if request.method == "POST":
-                password = (request.form.get("password") or "").strip()
-                if password == RESULTS_PASSWORD:
-                    rows, headers = read_guesses()
-                    return render_template("results.html", rows=rows, headers=headers)
-                return render_template(
-                    "results_locked.html",
-                    error="Incorrect password. Please try again.",
-                )
-            # If GET and results hidden
-            return render_template("results_locked.html")
-
-        # If SHOW_RESULTS=true
-        rows, headers = read_guesses()
+        guesses = Guess.query.order_by(Guess.id.asc()).all()
+        headers = ["timestamp","guest_name","baby_name","gender","due_date","due_time","weight_kg"]
+        rows = [{h: getattr(g, h) for h in headers} for g in guesses]
         return render_template("results.html", rows=rows, headers=headers)
 
     return app
